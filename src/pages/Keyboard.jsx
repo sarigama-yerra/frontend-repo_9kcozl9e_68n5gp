@@ -2,24 +2,22 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from '../components/Navbar'
 import ProductCard from '../components/ProductCard'
+import { apiFetch, API_BASE, ping } from '../lib/api'
 
 const Keyboard = () => {
-  const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [apiStatus, setApiStatus] = useState('checking')
 
   const fetchKeyboards = async () => {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${baseUrl}/products?category=keyboard`)
-      if (!res.ok) throw new Error('Failed to load products')
-      const data = await res.json()
+      const data = await apiFetch('/products?category=keyboard')
       if (Array.isArray(data) && data.length === 0) {
-        await fetch(`${baseUrl}/products/seed`, { method: 'POST' })
-        const res2 = await fetch(`${baseUrl}/products?category=keyboard`)
-        const data2 = await res2.json()
+        await apiFetch('/products/seed', { method: 'POST' })
+        const data2 = await apiFetch('/products?category=keyboard')
         setProducts(data2)
       } else {
         setProducts(data)
@@ -32,9 +30,12 @@ const Keyboard = () => {
   }
 
   useEffect(() => {
-    fetchKeyboards()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseUrl])
+    ;(async () => {
+      const res = await ping()
+      setApiStatus(res.ok ? 'ok' : `error: ${res.detail}`)
+      await fetchKeyboards()
+    })()
+  }, [])
 
   const featured = useMemo(() => products.find(p => p.featured) || products[0], [products])
 
@@ -44,6 +45,12 @@ const Keyboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {apiStatus !== 'ok' && (
+        <div className="w-full bg-amber-50 text-amber-800 text-sm px-4 py-2 text-center">
+          Can't reach API at {API_BASE}. {typeof apiStatus === 'string' ? apiStatus : ''}
+        </div>
+      )}
+
       <Navbar cartCount={0} onCartToggle={() => {}} />
 
       <main>
@@ -76,7 +83,7 @@ const Keyboard = () => {
                 <img src={featured.image} alt={featured.name} className="w-full h-64 object-cover rounded-xl" />
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{featured.name}</h2>
-                  <p className="mt-2 text-slate-600 dark:text-slate-300">{featured.description || 'A beautifully engineered board with hot‑swap switches, aluminum chassis, and per‑key RGB.'}</p>
+                  <p className="mt-2 text-slate-600 dark:text-slate-300">{featured.description || 'A beautifully engineered board with hot\u2011swap switches, aluminum chassis, and per\u2011key RGB.'}</p>
                   <div className="mt-4 flex items-center gap-3">
                     <span className="text-xl font-semibold text-slate-900 dark:text-white">${'{'}featured.price{'}'}</span>
                     <span className="text-sm px-2 py-1 rounded-full bg-gradient-to-br from-blue-600 to-purple-700 text-white">Keyboard</span>
@@ -117,7 +124,7 @@ const Keyboard = () => {
 
       <footer className="border-t border-slate-200/60 dark:border-white/10 py-8">
         <div className="mx-auto max-w-6xl px-6 sm:px-8 text-center text-sm text-slate-500 dark:text-slate-400">
-          © {new Date().getFullYear()} Keyboards by VibeStore
+          \u00A9 {new Date().getFullYear()} Keyboards by VibeStore
         </div>
       </footer>
     </div>

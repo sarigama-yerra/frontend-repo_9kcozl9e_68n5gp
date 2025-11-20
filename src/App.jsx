@@ -4,16 +4,16 @@ import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import ProductCard from './components/ProductCard'
 import CartDrawer from './components/CartDrawer'
+import { apiFetch, API_BASE, ping } from './lib/api'
 
 function App() {
-  const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
-
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [cartOpen, setCartOpen] = useState(false)
   const [cart, setCart] = useState([])
   const [filter, setFilter] = useState('all')
+  const [apiStatus, setApiStatus] = useState('checking')
 
   const categories = useMemo(() => {
     const cats = new Set()
@@ -25,14 +25,10 @@ function App() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${baseUrl}/products`)
-      if (!res.ok) throw new Error('Failed to load products')
-      const data = await res.json()
+      const data = await apiFetch('/products')
       if (Array.isArray(data) && data.length === 0) {
-        // Seed if empty
-        await fetch(`${baseUrl}/products/seed`, { method: 'POST' })
-        const res2 = await fetch(`${baseUrl}/products`)
-        const data2 = await res2.json()
+        await apiFetch('/products/seed', { method: 'POST' })
+        const data2 = await apiFetch('/products')
         setProducts(data2)
       } else {
         setProducts(data)
@@ -45,9 +41,12 @@ function App() {
   }
 
   useEffect(() => {
-    fetchProducts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseUrl])
+    ;(async () => {
+      const res = await ping()
+      setApiStatus(res.ok ? 'ok' : `error: ${res.detail}`)
+      await fetchProducts()
+    })()
+  }, [])
 
   const addToCart = (product) => {
     setCart(prev => {
@@ -84,13 +83,10 @@ function App() {
       status: 'pending',
     }
     try {
-      const res = await fetch(`${baseUrl}/orders`, {
+      const data = await apiFetch('/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: payload,
       })
-      if (!res.ok) throw new Error('Checkout failed')
-      const data = await res.json()
       alert(`Order placed! ID: ${data.id}`)
       setCart([])
       setCartOpen(false)
@@ -101,6 +97,13 @@ function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      {/* Connectivity banner */}
+      {apiStatus !== 'ok' && (
+        <div className="w-full bg-amber-50 text-amber-800 text-sm px-4 py-2 text-center">
+          Can't reach API at {API_BASE}. {typeof apiStatus === 'string' ? apiStatus : ''}
+        </div>
+      )}
+
       <Navbar cartCount={cart.reduce((s, it) => s + it.qty, 0)} onCartToggle={() => setCartOpen(true)} />
 
       <main>
