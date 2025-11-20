@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import ProductCard from './components/ProductCard'
@@ -20,22 +21,32 @@ function App() {
     return ['all', ...Array.from(cats)]
   }, [products])
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true)
-      setError('')
-      try {
-        const res = await fetch(`${baseUrl}/products`)
-        if (!res.ok) throw new Error('Failed to load products')
-        const data = await res.json()
+  const fetchProducts = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${baseUrl}/products`)
+      if (!res.ok) throw new Error('Failed to load products')
+      const data = await res.json()
+      if (Array.isArray(data) && data.length === 0) {
+        // Seed if empty
+        await fetch(`${baseUrl}/products/seed`, { method: 'POST' })
+        const res2 = await fetch(`${baseUrl}/products`)
+        const data2 = await res2.json()
+        setProducts(data2)
+      } else {
         setProducts(data)
-      } catch (e) {
-        setError(e.message || 'Something went wrong')
-      } finally {
-        setLoading(false)
       }
+    } catch (e) {
+      setError(e.message || 'Something went wrong')
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
     fetchProducts()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseUrl])
 
   const addToCart = (product) => {
@@ -80,7 +91,6 @@ function App() {
       })
       if (!res.ok) throw new Error('Checkout failed')
       const data = await res.json()
-      // Simple success state
       alert(`Order placed! ID: ${data.id}`)
       setCart([])
       setCartOpen(false)
@@ -94,10 +104,8 @@ function App() {
       <Navbar cartCount={cart.reduce((s, it) => s + it.qty, 0)} onCartToggle={() => setCartOpen(true)} />
 
       <main>
-        {/* Hero with blue→purple diagonal gradient background image (provided asset) */}
         <Hero />
 
-        {/* Featured strip */}
         <section className="relative -mt-12 z-10">
           <div className="mx-auto max-w-6xl px-6 sm:px-8">
             <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-purple-700 text-white p-6 sm:p-8 shadow-xl ring-1 ring-white/20">
@@ -122,7 +130,6 @@ function App() {
           </div>
         </section>
 
-        {/* Products grid */}
         <section className="py-12 sm:py-16">
           <div className="mx-auto max-w-6xl px-6 sm:px-8">
             {loading ? (
@@ -136,19 +143,35 @@ function App() {
                 {error}
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-                {filteredProducts.map(p => (
-                  <ProductCard key={p._id || p.id} product={p} onAdd={addToCart} />
-                ))}
-              </div>
+              <motion.div
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, amount: 0.1 }}
+                variants={{
+                  hidden: { opacity: 1 },
+                  show: { opacity: 1, transition: { staggerChildren: 0.08 } }
+                }}
+                className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
+              >
+                <AnimatePresence>
+                  {filteredProducts.map((p, idx) => (
+                    <ProductCard key={p._id || p.id} product={p} onAdd={addToCart} index={idx} />
+                  ))}
+                </AnimatePresence>
+              </motion.div>
             )}
           </div>
         </section>
 
-        {/* CTA Banner */}
         <section className="pb-16">
           <div className="mx-auto max-w-6xl px-6 sm:px-8">
-            <div className="rounded-2xl p-8 sm:p-10 bg-white/70 dark:bg-slate-900/70 ring-1 ring-slate-200/60 dark:ring-white/10 flex flex-col md:flex-row items-center justify-between gap-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="rounded-2xl p-8 sm:p-10 bg-white/70 dark:bg-slate-900/70 ring-1 ring-slate-200/60 dark:ring-white/10 flex flex-col md:flex-row items-center justify-between gap-6"
+            >
               <div>
                 <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Join the Vibe Club</h3>
                 <p className="text-slate-500 dark:text-slate-400">Members get early access to drops and exclusive deals.</p>
@@ -156,19 +179,17 @@ function App() {
               <a href="#join" className="inline-flex items-center rounded-xl bg-gradient-to-br from-blue-600 to-purple-700 text-white px-5 py-3 font-semibold shadow">
                 Sign up free
               </a>
-            </div>
+            </motion.div>
           </div>
         </section>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-slate-200/60 dark:border-white/10 py-8">
         <div className="mx-auto max-w-6xl px-6 sm:px-8 text-center text-sm text-slate-500 dark:text-slate-400">
           © {new Date().getFullYear()} VibeStore. All rights reserved.
         </div>
       </footer>
 
-      {/* Cart Drawer */}
       <CartDrawer open={cartOpen} items={cart} onClose={() => setCartOpen(false)} onCheckout={handleCheckout} />
     </div>
   )
