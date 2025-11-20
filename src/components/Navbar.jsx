@@ -10,6 +10,11 @@ const Navbar = ({ cartCount, onCartToggle }) => {
           <span className="text-lg font-semibold text-slate-900 dark:text-white">VibeStore</span>
         </a>
 
+        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+          <a href="/keyboards" className="text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Keyboards</a>
+          <a href="/login" className="text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">Login</a>
+        </nav>
+
         <div className="hidden md:flex items-center gap-2 flex-1 max-w-xl mx-6">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
